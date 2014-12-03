@@ -8,7 +8,7 @@ using System.Reflection.Emit;
 
 namespace Microsoft.Xna.Framework.Content
 {
-    public static class ContentExtensions
+    internal static class ContentExtensions
     {
         public static ConstructorInfo GetDefaultConstructor(this Type type)
         {
@@ -41,7 +41,7 @@ namespace Microsoft.Xna.Framework.Content
             var attrs = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
             var allProps = type.GetProperties(attrs).ToList();
 
-            var props = allProps.FindAll(p => p.GetGetMethod() == p.GetGetMethod().GetBaseDefinition()).ToArray();
+            var props = allProps.FindAll(p => p.GetGetMethod() != null && p.GetGetMethod() == p.GetGetMethod().GetBaseDefinition()).ToArray();
             return props;
 #endif
         }

@@ -73,17 +73,21 @@ namespace Microsoft.Xna.Framework.Input
             Left = leftValue;
             Right = rightValue;
         }
-        internal GamePadDPad(Buttons b)
+
+        internal GamePadDPad(params Buttons[] buttons)
             : this()
         {
-            if ((b & Buttons.DPadDown) == Buttons.DPadDown)
-                Down = ButtonState.Pressed;
-            if ((b & Buttons.DPadLeft) == Buttons.DPadLeft)
-                Left = ButtonState.Pressed;
-            if ((b & Buttons.DPadRight) == Buttons.DPadRight)
-                Right = ButtonState.Pressed;
-            if ((b & Buttons.DPadUp) == Buttons.DPadUp)
-                Up = ButtonState.Pressed;
+            foreach (var b in buttons)
+            {
+                if ((b & Buttons.DPadDown) == Buttons.DPadDown)
+                    Down = ButtonState.Pressed;
+                if ((b & Buttons.DPadLeft) == Buttons.DPadLeft)
+                    Left = ButtonState.Pressed;
+                if ((b & Buttons.DPadRight) == Buttons.DPadRight)
+                    Right = ButtonState.Pressed;
+                if ((b & Buttons.DPadUp) == Buttons.DPadUp)
+                    Up = ButtonState.Pressed;
+            }
         }
 
         /// <summary>
@@ -119,6 +123,15 @@ namespace Microsoft.Xna.Framework.Input
         public override bool Equals(object obj)
         {
             return (obj is GamePadDPad) && (this == (GamePadDPad)obj);
+        }
+
+        public override int GetHashCode ()
+        {
+            return 
+                (this.Down  == ButtonState.Pressed ? 1 : 0) +
+                (this.Left  == ButtonState.Pressed ? 2 : 0) +
+                (this.Right == ButtonState.Pressed ? 4 : 0) +
+                (this.Up    == ButtonState.Pressed ? 8 : 0);
         }
 	}
 }

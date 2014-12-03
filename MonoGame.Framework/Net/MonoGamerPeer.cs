@@ -646,7 +646,7 @@ namespace Microsoft.Xna.Framework.Net
 				netPeer.DiscoverLocalPeers (port);
 			}
 
-			DateTime now = DateTime.Now;
+			DateTime now = DateTime.UtcNow;
 
 			discoveryMsgs = new List<NetIncomingMessage> ();
 
@@ -682,7 +682,7 @@ namespace Microsoft.Xna.Framework.Net
 						break;
 					}
 				}
-			} while ((DateTime.Now - now).Seconds <= 2);
+			} while ((DateTime.UtcNow - now).Seconds <= 2);
 
 			netPeer.Shutdown ("Find shutting down");
 		}
@@ -738,7 +738,7 @@ namespace Microsoft.Xna.Framework.Net
 					string gamerTag = im.ReadString ();
 					int openPrivateGamerSlots = im.ReadInt32 ();
 					int openPublicGamerSlots = im.ReadInt32 ();
-					bool isHost = im.ReadBoolean ();
+					im.ReadBoolean (); //isHost
 
 					NetworkSessionProperties properties = new NetworkSessionProperties ();
 					int[] propertyData = new int[properties.Count * 2];
@@ -763,7 +763,7 @@ namespace Microsoft.Xna.Framework.Net
 						gamerTag = im.ReadString ();
 						openPrivateGamerSlots = im.ReadInt32 ();
 						openPublicGamerSlots = im.ReadInt32 ();
-						isHost = im.ReadBoolean ();
+						im.ReadBoolean (); // isHost
 						IPEndPoint hostInternal = im.ReadIPEndpoint ();
 						IPEndPoint hostExternal = im.ReadIPEndpoint ();
 						available.SessionType = NetworkSessionType.PlayerMatch;

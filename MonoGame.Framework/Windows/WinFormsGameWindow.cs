@@ -43,6 +43,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
@@ -58,9 +59,11 @@ using XnaPoint = Microsoft.Xna.Framework.Point;
 
 namespace MonoGame.Framework
 {
-    public class WinFormsGameWindow : GameWindow
+    class WinFormsGameWindow : GameWindow
     {
         internal WinFormsGameForm _form;
+
+        static private List<WinFormsGameWindow> _allWindows = new List<WinFormsGameWindow>();
 
         private readonly WinFormsGamePlatform _platform;
 
@@ -111,6 +114,16 @@ namespace MonoGame.Framework
             }
         }
 
+        public override bool AllowAltF4
+        {
+             get { return base.AllowAltF4; }
+             set
+             {
+                 _form.AllowAltF4 = value;
+                 base.AllowAltF4 = value;
+             }
+        }
+
         public override DisplayOrientation CurrentOrientation
         {
             get { return DisplayOrientation.Default; }
@@ -155,22 +168,20 @@ namespace MonoGame.Framework
             _platform = platform;
             Game = platform.Game;
 
-            _form = new WinFormsGameForm();
+            _form = new WinFormsGameForm(this);
             
             // When running unit tests this can return null.
             var assembly = Assembly.GetEntryAssembly();
             if (assembly != null)
                 _form.Icon = Icon.ExtractAssociatedIcon(assembly.Location);
+            Title = Utilities.AssemblyHelper.GetDefaultWindowTitle();
 
             _form.MaximizeBox = false;
             _form.FormBorderStyle = FormBorderStyle.FixedSingle;
             _form.StartPosition = FormStartPosition.CenterScreen;           
 
             // Capture mouse events.
-            _form.MouseDown += OnMouseState;
-            _form.MouseMove += OnMouseState;
-            _form.MouseUp += OnMouseState;
-            _form.MouseWheel += OnMouseState;
+            _form.MouseWheel += OnMouseScroll;
             _form.MouseEnter += OnMouseEnter;
             _form.MouseLeave += OnMouseLeave;            
 
@@ -183,6 +194,8 @@ namespace MonoGame.Framework
             _form.ClientSizeChanged += OnClientSizeChanged;
 
             _form.KeyPress += OnKeyPress;
+
+            _allWindows.Add(this);
         }
 
         private void OnActivated(object sender, EventArgs eventArgs)
@@ -198,16 +211,35 @@ namespace MonoGame.Framework
                 KeyState.Clear();
         }
 
-        private void OnMouseState(object sender, MouseEventArgs mouseEventArgs)
+        private void OnMouseScroll(object sender, MouseEventArgs mouseEventArgs)
         {
+            MouseState.ScrollWheelValue += mouseEventArgs.Delta;
+        }
+
+        private void UpdateMouseState()
+        {
+            // If we call the form client functions before the form has
+            // been made visible it will cause the wrong window size to
+            // be applied at startup.
+            if (!_form.Visible)
+                return;
+
+            var clientPos = _form.PointToClient(Control.MousePosition);
+            var withinClient = _form.ClientRectangle.Contains(clientPos);
+            var buttons = Control.MouseButtons;
+
             var previousState = MouseState.LeftButton;
 
-            MouseState.X = mouseEventArgs.X;
-            MouseState.Y = mouseEventArgs.Y;
-            MouseState.LeftButton = (mouseEventArgs.Button & MouseButtons.Left) == MouseButtons.Left ? ButtonState.Pressed : ButtonState.Released;
-            MouseState.MiddleButton = (mouseEventArgs.Button & MouseButtons.Middle) == MouseButtons.Middle ? ButtonState.Pressed : ButtonState.Released;
-            MouseState.RightButton = (mouseEventArgs.Button & MouseButtons.Right) == MouseButtons.Right ? ButtonState.Pressed : ButtonState.Released;
-            MouseState.ScrollWheelValue += mouseEventArgs.Delta;
+            MouseState.X = clientPos.X;
+            MouseState.Y = clientPos.Y;
+            MouseState.LeftButton = (buttons & MouseButtons.Left) == MouseButtons.Left ? ButtonState.Pressed : ButtonState.Released;
+            MouseState.MiddleButton = (buttons & MouseButtons.Middle) == MouseButtons.Middle ? ButtonState.Pressed : ButtonState.Released;
+            MouseState.RightButton = (buttons & MouseButtons.Right) == MouseButtons.Right ? ButtonState.Pressed : ButtonState.Released;
+
+            // Don't process touch state if we're not active 
+            // and the mouse is within the client area.
+            if (!_platform.IsActive || !withinClient)
+                return;
             
             TouchLocationState? touchState = null;
             if (MouseState.LeftButton == ButtonState.Pressed)
@@ -219,7 +251,7 @@ namespace MonoGame.Framework
                 touchState = TouchLocationState.Released;
 
             if (touchState.HasValue)
-                 TouchPanel.AddEvent(0, touchState.Value, new Vector2(MouseState.X, MouseState.Y), true);
+                TouchPanelState.AddEvent(0, touchState.Value, new Vector2(MouseState.X, MouseState.Y), true);
         } 
 
         private void OnMouseEnter(object sender, EventArgs e)
@@ -247,6 +279,12 @@ namespace MonoGame.Framework
             if (KeyState == null)
                 return;
 
+            if ((int)args.Key == 0xff)
+            {
+                // dead key, e.g. a "shift" automatically happens when using Up/Down/Left/Right
+                return;
+            }
+
             XnaKey xnaKey;
 
             switch (args.MakeCode)
@@ -272,9 +310,9 @@ namespace MonoGame.Framework
                     break;
             }
 
-            if (args.State == SharpDX.RawInput.KeyState.KeyDown && !KeyState.Contains(xnaKey))
+            if ((args.State == SharpDX.RawInput.KeyState.KeyDown || args.State == SharpDX.RawInput.KeyState.SystemKeyDown) && !KeyState.Contains(xnaKey))
                 KeyState.Add(xnaKey);
-            else if (args.State == SharpDX.RawInput.KeyState.KeyUp)
+            else if (args.State == SharpDX.RawInput.KeyState.KeyUp || args.State == SharpDX.RawInput.KeyState.SystemKeyUp)
                 KeyState.Remove(xnaKey);
         }
 
@@ -323,6 +361,25 @@ namespace MonoGame.Framework
             Application.Idle += OnIdle;
             Application.Run(_form);
             Application.Idle -= OnIdle;
+
+
+            // We need to remove the WM_QUIT message in the message 
+            // pump as it will keep us from restarting on this 
+            // same thread.
+            //
+            // This is critical for some NUnit runners which
+            // typically will run all the tests on the same
+            // process/thread.
+
+            var msg = new NativeMessage();
+            do
+            {
+                if (msg.msg == WM_QUIT)
+                    break;
+
+                Thread.Sleep(100);
+            } 
+            while (PeekMessage(out msg, IntPtr.Zero, 0, 0, 1));
         }
 
         private void OnIdle(object sender, EventArgs eventArgs)
@@ -331,11 +388,22 @@ namespace MonoGame.Framework
             // to be processed tick the game.
             NativeMessage msg;
             while (!PeekMessage(out msg, IntPtr.Zero, 0, 0, 0))
+            {
+                UpdateWindows();
                 Game.Tick();
+            }
         }
 
+        internal void UpdateWindows()
+        {
+            // Update the mouse state for each window.
+            foreach (var window in _allWindows)
+                window.UpdateMouseState();
+        }
+
+        private const uint WM_QUIT = 0x12;
+
         [StructLayout(LayoutKind.Sequential)]
-        [CLSCompliant(false)]
         public struct NativeMessage
         {
             public IntPtr handle;
@@ -361,6 +429,7 @@ namespace MonoGame.Framework
         {
             if (_form != null)
             {
+                _allWindows.Remove(this);
                 _form.Dispose();
                 _form = null;
             }

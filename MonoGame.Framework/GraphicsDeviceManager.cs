@@ -1,42 +1,6 @@
-﻿#region License
-/*
-Microsoft Public License (Ms-PL)
-MonoGame - Copyright © 2009 The MonoGame Team
-
-All rights reserved.
-
-This license governs use of the accompanying software. If you use the software, you accept this license. If you do not
-accept the license, do not use the software.
-
-1. Definitions
-The terms "reproduce," "reproduction," "derivative works," and "distribution" have the same meaning here as under 
-U.S. copyright law.
-
-A "contribution" is the original software, or any additions or changes to the software.
-A "contributor" is any person that distributes its contribution under this license.
-"Licensed patents" are a contributor's patent claims that read directly on its contribution.
-
-2. Grant of Rights
-(A) Copyright Grant- Subject to the terms of this license, including the license conditions and limitations in section 3, 
-each contributor grants you a non-exclusive, worldwide, royalty-free copyright license to reproduce its contribution, prepare derivative works of its contribution, and distribute its contribution or any derivative works that you create.
-(B) Patent Grant- Subject to the terms of this license, including the license conditions and limitations in section 3, 
-each contributor grants you a non-exclusive, worldwide, royalty-free license under its licensed patents to make, have made, use, sell, offer for sale, import, and/or otherwise dispose of its contribution in the software or derivative works of the contribution in the software.
-
-3. Conditions and Limitations
-(A) No Trademark License- This license does not grant you rights to use any contributors' name, logo, or trademarks.
-(B) If you bring a patent claim against any contributor over patents that you claim are infringed by the software, 
-your patent license from such contributor to the software ends automatically.
-(C) If you distribute any portion of the software, you must retain all copyright, patent, trademark, and attribution 
-notices that are present in the software.
-(D) If you distribute any portion of the software in source code form, you may do so only under this license by including 
-a complete copy of this license with your distribution. If you distribute any portion of the software in compiled or object 
-code form, you may only do so under a license that complies with this license.
-(E) The software is licensed "as-is." You bear the risk of using it. The contributors give no express warranties, guarantees
-or conditions. You may have additional consumer rights under your local laws which this license cannot change. To the extent
-permitted under your local laws, the contributors exclude the implied warranties of merchantability, fitness for a particular
-purpose and non-infringement.
-*/
-#endregion License
+// MonoGame - Copyright (C) The MonoGame Team
+// This file is subject to the terms and conditions defined in
+// file 'LICENSE.txt', which is part of this source code package.
 
 using System;
 using Microsoft.Xna.Framework.Graphics;
@@ -101,6 +65,8 @@ namespace Microsoft.Xna.Framework
             _preferredBackBufferFormat = SurfaceFormat.Color;
             _preferredDepthStencilFormat = DepthFormat.Depth24;
             _synchronizedWithVerticalRetrace = true;
+
+            GraphicsProfile = GraphicsDevice.GetHighestSupportedGraphicsProfile(null);
 
             if (_game.Services.GetService(typeof(IGraphicsDeviceManager)) != null)
                 throw new ArgumentException("Graphics Device Manager Already Present");
@@ -217,6 +183,7 @@ namespace Microsoft.Xna.Framework
                 return;
 
 #if WINDOWS_PHONE
+            _graphicsDevice.GraphicsProfile = GraphicsProfile;
             // Display orientation is always portrait on WP8
             _graphicsDevice.PresentationParameters.DisplayOrientation = DisplayOrientation.Portrait;
 #elif WINDOWS_STOREAPP
@@ -237,15 +204,15 @@ namespace Microsoft.Xna.Framework
 
 			// The graphics device can use a XAML panel or a window
 			// to created the default swapchain target.
-            if (SwapChainPanel != null)
+            if (this.SwapChainBackgroundPanel != null)
             {
                 _graphicsDevice.PresentationParameters.DeviceWindowHandle = IntPtr.Zero;
-                _graphicsDevice.PresentationParameters.SwapChainPanel = SwapChainPanel;
+                _graphicsDevice.PresentationParameters.SwapChainBackgroundPanel = this.SwapChainBackgroundPanel;
             }
             else
             {
                 _graphicsDevice.PresentationParameters.DeviceWindowHandle = _game.Window.Handle;
-                _graphicsDevice.PresentationParameters.SwapChainPanel = null;
+                _graphicsDevice.PresentationParameters.SwapChainBackgroundPanel = null;
             }
 
             // Update the back buffer.
@@ -272,10 +239,19 @@ namespace Microsoft.Xna.Framework
             _graphicsDevice.CreateSizeDependentResources();
             _graphicsDevice.ApplyRenderTargets(null);
 
-            _game.ResizeWindow(false);
+            ((MonoGame.Framework.WinFormsGamePlatform)_game.Platform).ResetWindowBounds();
 
 #elif WINDOWS || LINUX
-            _game.ResizeWindow(false);
+            ((OpenTKGamePlatform)_game.Platform).ResetWindowBounds();
+
+            //Set the swap interval based on if vsync is desired or not.
+            //See GetSwapInterval for more details
+            int swapInterval;
+            if (_synchronizedWithVerticalRetrace)
+                swapInterval = _graphicsDevice.PresentationParameters.PresentationInterval.GetSwapInterval();
+            else
+                swapInterval = 0;
+            _graphicsDevice.Context.SwapInterval = swapInterval;
 #elif MONOMAC
             _graphicsDevice.PresentationParameters.IsFullScreen = _wantFullScreen;
 
@@ -286,7 +262,7 @@ namespace Microsoft.Xna.Framework
 
 #if ANDROID
             // Trigger a change in orientation in case the supported orientations have changed
-            _game.Window.SetOrientation(_game.Window.CurrentOrientation, false);
+            ((AndroidGameWindow)_game.Window).SetOrientation(_game.Window.CurrentOrientation, false);
 #endif
             // Ensure the presentation parameter orientation and buffer size matches the window
             _graphicsDevice.PresentationParameters.DisplayOrientation = _game.Window.CurrentOrientation;
@@ -331,15 +307,15 @@ namespace Microsoft.Xna.Framework
 #elif WINRT
 			// The graphics device can use a XAML panel or a window
 			// to created the default swapchain target.
-            if (SwapChainPanel != null)
+            if (this.SwapChainBackgroundPanel != null)
             {
                 presentationParameters.DeviceWindowHandle = IntPtr.Zero;
-                presentationParameters.SwapChainPanel = SwapChainPanel;
+                presentationParameters.SwapChainBackgroundPanel = this.SwapChainBackgroundPanel;
             }
             else
             {
                 presentationParameters.DeviceWindowHandle = _game.Window.Handle;
-                presentationParameters.SwapChainPanel = null;
+                presentationParameters.SwapChainBackgroundPanel = null;
             }
 #else
             presentationParameters.DeviceWindowHandle = _game.Window.Handle;
@@ -396,7 +372,7 @@ namespace Microsoft.Xna.Framework
 
 #if WINDOWS_STOREAPP
         [CLSCompliant(false)]
-        public SwapChainBackgroundPanel SwapChainPanel { get; set; }
+        public SwapChainBackgroundPanel SwapChainBackgroundPanel { get; set; }
 #endif
 
         public GraphicsProfile GraphicsProfile { get; set; }
@@ -516,20 +492,11 @@ namespace Microsoft.Xna.Framework
         {
             get
             {
-#if LINUX
-                return _game.Platform.VSyncEnabled;
-#else
                 return _synchronizedWithVerticalRetrace;
-#endif
             }
             set
             {
-#if LINUX
-                // TODO: I'm pretty sure this shouldn't occur until ApplyChanges().
-                _game.Platform.VSyncEnabled = value;
-#else
                 _synchronizedWithVerticalRetrace = value;
-#endif
             }
         }
 
@@ -608,7 +575,7 @@ namespace Microsoft.Xna.Framework
             // Set the veiwport so the (potentially) resized client bounds are drawn in the middle of the screen
             _graphicsDevice.Viewport = new Viewport(newClientBounds.X, -newClientBounds.Y, newClientBounds.Width, newClientBounds.Height);
 
-            _game.Window.ClientBounds = newClientBounds;
+            ((AndroidGameWindow)_game.Window).ChangeClientBounds(newClientBounds);
 
             // Touch panel needs latest buffer size for scaling
             TouchPanel.DisplayWidth = newClientBounds.Width;

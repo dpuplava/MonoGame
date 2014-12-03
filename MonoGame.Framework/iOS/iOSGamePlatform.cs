@@ -80,7 +80,7 @@ using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
-using Microsoft.Xna.Framework.GamerServices;
+//using Microsoft.Xna.Framework.GamerServices;
 
 namespace Microsoft.Xna.Framework
 {
@@ -99,8 +99,9 @@ namespace Microsoft.Xna.Framework
 			
 			// Setup our OpenALSoundController to handle our SoundBuffer pools
 			soundControllerInstance = OpenALSoundController.GetInstance;
-			
-            Directory.SetCurrentDirectory(NSBundle.MainBundle.ResourcePath);
+
+            //This also runs the TitleContainer static constructor, ensuring it is done on the main thread
+            Directory.SetCurrentDirectory(TitleContainer.Location);
 
             _applicationObservers = new List<NSObject>();
 
@@ -118,10 +119,11 @@ namespace Microsoft.Xna.Framework
 
             _mainWindow.RootViewController = _viewController;
             _mainWindow.Add (_viewController.View);
-            
+
             _viewController.InterfaceOrientationChanged += ViewController_InterfaceOrientationChanged;
 
-            Guide.Initialise(game);
+            //(SJ) Why is this called here when it's not in any other project
+            //Guide.Initialise(game);
         }
 
         public override void TargetElapsedTimeChanged ()
@@ -142,12 +144,6 @@ namespace Microsoft.Xna.Framework
             _displayLink.FrameInterval = (int)Math.Round(60f * Game.TargetElapsedTime.TotalSeconds);
 
             _displayLink.AddToRunLoop(NSRunLoop.Main, NSRunLoop.NSDefaultRunLoopMode);
-        }
-
-        private void DestroyDisplayLink()
-        {
-            if (_displayLink != null)
-                _displayLink.RemoveFromRunLoop(NSRunLoop.Main, NSRunLoop.NSDefaultRunLoopMode);
         }
 
 
@@ -230,8 +226,13 @@ namespace Microsoft.Xna.Framework
 
             if (!IsPlayingVideo)
             {
-                if (_viewController != null)
-                    _viewController.View.Present();
+                if (Game.GraphicsDevice != null)
+                {
+                    // GraphicsDevice.Present() takes care of actually 
+                    // disposing resources disposed from a non-ui thread
+                    Game.GraphicsDevice.Present();
+                }
+                _viewController.View.Present ();
             }
         }
 
@@ -267,20 +268,12 @@ namespace Microsoft.Xna.Framework
         public override void Exit()
         {
             // Do Nothing: iOS games do not "exit" or shut down.
-            this.DestroyDisplayLink();
-            this.RaiseAsyncRunLoopEnded();
         }
 
         private void BeginObservingUIApplication()
         {
             var events = new Tuple<NSString, Action<NSNotification>>[]
             {
-                Tuple.Create(
-                    UIApplication.WillEnterForegroundNotification,
-                    new Action<NSNotification>(Application_WillEnterForeground)),
-                Tuple.Create(
-                    UIApplication.DidEnterBackgroundNotification,
-                    new Action<NSNotification>(Application_DidEnterBackground)),
                 Tuple.Create(
                     UIApplication.DidBecomeActiveNotification,
                     new Action<NSNotification>(Application_DidBecomeActive)),
@@ -290,9 +283,6 @@ namespace Microsoft.Xna.Framework
                 Tuple.Create(
                     UIApplication.WillTerminateNotification,
                     new Action<NSNotification>(Application_WillTerminate)),
-                Tuple.Create(
-                    UIApplication.DidReceiveMemoryWarningNotification,
-                    new Action<NSNotification>(Application_DidReceiveMemoryWarning))
              };
 
             foreach (var entry in events)
@@ -300,16 +290,6 @@ namespace Microsoft.Xna.Framework
         }
 
         #region Notification Handling
-
-        private void Application_WillEnterForeground(NSNotification notification)
-        {
-			// Already handled in Application_DidBecomeActive. See below for IsActive state change.	
-        }
-
-        private void Application_DidEnterBackground(NSNotification notification)
-        {
-			// Already handled in Application_WillResignActive. See below for IsActive state change.
-        }
 
         private void Application_DidBecomeActive(NSNotification notification)
         {
@@ -329,13 +309,6 @@ namespace Microsoft.Xna.Framework
 			{
 				// TODO MonoGameGame.Terminate();
 			}
-        }
-
-        private void Application_DidReceiveMemoryWarning(NSNotification notification)
-        {
-            // FIXME: Possibly add some more sophisticated behavior here.  It's
-            //        also possible that this is not iOSGamePlatform's job.
-            GC.Collect();
         }
 
         #endregion Notification Handling
