@@ -118,7 +118,7 @@ namespace Microsoft.Xna.Framework
 
             _mainWindow.RootViewController = _viewController;
             _mainWindow.Add (_viewController.View);
-
+            
             _viewController.InterfaceOrientationChanged += ViewController_InterfaceOrientationChanged;
 
             Guide.Initialise(game);
@@ -142,6 +142,12 @@ namespace Microsoft.Xna.Framework
             _displayLink.FrameInterval = (int)Math.Round(60f * Game.TargetElapsedTime.TotalSeconds);
 
             _displayLink.AddToRunLoop(NSRunLoop.Main, NSRunLoop.NSDefaultRunLoopMode);
+        }
+
+        private void DestroyDisplayLink()
+        {
+            if (_displayLink != null)
+                _displayLink.RemoveFromRunLoop(NSRunLoop.Main, NSRunLoop.NSDefaultRunLoopMode);
         }
 
 
@@ -223,7 +229,10 @@ namespace Microsoft.Xna.Framework
             Game.Tick ();
 
             if (!IsPlayingVideo)
-                _viewController.View.Present ();
+            {
+                if (_viewController != null)
+                    _viewController.View.Present();
+            }
         }
 
         public override bool BeforeDraw(GameTime gameTime)
@@ -258,6 +267,8 @@ namespace Microsoft.Xna.Framework
         public override void Exit()
         {
             // Do Nothing: iOS games do not "exit" or shut down.
+            this.DestroyDisplayLink();
+            this.RaiseAsyncRunLoopEnded();
         }
 
         private void BeginObservingUIApplication()

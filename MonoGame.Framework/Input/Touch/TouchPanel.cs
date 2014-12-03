@@ -213,7 +213,6 @@ namespace Microsoft.Xna.Framework.Input.Touch
             var consumeState = true;
             while (RefreshState(consumeState, _touchState, _touchEvents))
                 consumeState = false;
-
             return new TouchCollection(_touchState.ToArray());
         }
 

@@ -412,6 +412,7 @@ namespace Microsoft.Xna.Framework
         public void Exit()
         {
             Platform.Exit();
+            
         }
 
         public void ResetElapsedTime()

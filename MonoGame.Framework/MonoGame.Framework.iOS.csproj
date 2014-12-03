@@ -470,21 +470,7 @@
     </MonoDevelop>
   </ProjectExtensions>
   <ItemGroup>
-    <Folder Include="Graphics\" />
-    <Folder Include="iOS\GamerServices\" />
-    <Folder Include="iOS\Input\" />
     <Folder Include="iOS\Audio\" />
-    <Folder Include="iOS\Media\" />
-    <Folder Include="iOS\Net\" />
-    <Folder Include="Graphics\Effect\Resources\" />
-    <Folder Include="iOS\Devices\" />
-    <Folder Include="iOS\Devices\Sensors\" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\ThirdParty\Lidgren.Network\Lidgren.Network.iOS.csproj">
-      <Project>{734EAA48-F1CA-481A-B391-0285BC0E8B40}</Project>
-      <Name>Lidgren.Network.iOS</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Graphics\Effect\Resources\AlphaTestEffect.ogl.mgfxo" />
@@ -493,5 +479,11 @@
     <EmbeddedResource Include="Graphics\Effect\Resources\EnvironmentMapEffect.ogl.mgfxo" />
     <EmbeddedResource Include="Graphics\Effect\Resources\SkinnedEffect.ogl.mgfxo" />
     <EmbeddedResource Include="Graphics\Effect\Resources\SpriteEffect.ogl.mgfxo" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ThirdParty\Lidgren.Network\Lidgren.Network.iOS.csproj">
+      <Project>{734eaa48-f1ca-481a-b391-0285bc0e8b40}</Project>
+      <Name>Lidgren.Network.iOS</Name>
+    </ProjectReference>
   </ItemGroup>
 </Project>

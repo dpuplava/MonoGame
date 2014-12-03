@@ -87,6 +87,11 @@ namespace Microsoft.Xna.Framework {
 
 		public DisplayOrientation SupportedOrientations { get; set; }
 
+        public override bool PrefersStatusBarHidden()
+        {
+            return true;
+        }
+
 		public override void LoadView ()
 		{
 			RectangleF frame;
