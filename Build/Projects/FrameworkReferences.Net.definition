@@ -3,7 +3,7 @@
 
   <Platform Type="iOS">
     <Reference Include="System.Core" />
-    <Reference Include="monotouch" />
+    <Reference Include="Xamarin.iOS" />
     <Reference Include="Lidgren.Network" />
   </Platform>
 
@@ -34,13 +34,6 @@
       Path="ThirdParty/Dependencies/OUYA/Ouya.Console.Api.dll" />
   </Platform>
 
-  <Platform Type="PSMobile">
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml" />
-    <Reference Include="Sce.PlayStation.Core" />
-    <Reference Include="Lidgren.Network" />
-  </Platform>
-
   <Platform Type="Windows">
     <Reference Include="System.Core" />
     <Reference Include="Lidgren.Network" />
@@ -63,9 +56,11 @@
       <Alias Platform="WindowsPhone">MicrosoftXnaFramework</Alias>
     </Reference>
   </Platform>
+  
   <Platform Type="WindowsPhone81">
     <Reference Include="MonoGame.Framework.WindowsPhone81" />
   </Platform>
+   
   <Platform Type="Web">
     <Reference Include="JSIL.Meta" />
   </Platform>

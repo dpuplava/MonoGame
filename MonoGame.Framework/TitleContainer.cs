@@ -7,12 +7,10 @@ using System.IO;
 #if WINRT
 using System.Threading.Tasks;
 #elif IOS
-using MonoTouch.Foundation;
-using MonoTouch.UIKit;
+using Foundation;
+using UIKit;
 #elif MONOMAC
 using MonoMac.Foundation;
-#elif PSM
-using Sce.PlayStation.Core;
 #endif
 using Microsoft.Xna.Framework.Utilities;
 
@@ -22,14 +20,12 @@ namespace Microsoft.Xna.Framework
     {
         static TitleContainer() 
         {
-#if WINDOWS || LINUX
+#if WINDOWS || DESKTOPGL
             Location = AppDomain.CurrentDomain.BaseDirectory;
 #elif WINRT
             Location = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
 #elif IOS || MONOMAC
 			Location = NSBundle.MainBundle.ResourcePath;
-#elif PSM
-			Location = "/Application";
 #else
             Location = string.Empty;
 #endif
@@ -88,7 +84,7 @@ namespace Microsoft.Xna.Framework
 
             return stream;
 #elif ANDROID
-            return Game.Activity.Assets.Open(safeName);
+            return Android.App.Application.Context.Assets.Open(safeName);
 #elif IOS
             var absolutePath = Path.Combine(Location, safeName);
             if (SupportRetina)
