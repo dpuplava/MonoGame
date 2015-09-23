@@ -96,7 +96,8 @@ namespace Microsoft.Xna.Framework
             base(game)
         {
             game.Services.AddService(typeof(iOSGamePlatform), this);
-			
+            //game.GraphicsDevice.PresentationParameters.IsFullScreen = true;
+
 			// Setup our OpenALSoundController to handle our SoundBuffer pools
 			soundControllerInstance = OpenALSoundController.GetInstance;
 
@@ -232,7 +233,8 @@ namespace Microsoft.Xna.Framework
                     // disposing resources disposed from a non-ui thread
                     Game.GraphicsDevice.Present();
                 }
-                _viewController.View.Present ();
+                if (_viewController != null)
+                    _viewController.View.Present ();
             }
         }
 
@@ -267,7 +269,30 @@ namespace Microsoft.Xna.Framework
 
         public override void Exit()
         {
-            // Do Nothing: iOS games do not "exit" or shut down.
+            // Do Nothing: iOS games do not "exit" or shut down.            
+            this.IsActive = false;
+
+            _displayLink.Invalidate();
+
+
+            UIWindow window;
+            if ((window = this.Game.Services.GetService(typeof(UIWindow)) as UIWindow) != null)
+            {
+                window.Dispose();
+                this.Game.Services.RemoveService(typeof(UIWindow));
+            }
+
+            UIViewController controller;
+            if ((controller = this.Game.Services.GetService(typeof(UIViewController)) as UIViewController) != null)
+            {
+                controller.View.Dispose();
+
+                controller.Dispose();
+                this.Game.Services.RemoveService(typeof(UIViewController));
+            }
+            
+            RaiseAsyncRunLoopEnded();
+            UIApplication.SharedApplication.Windows[0].MakeKeyAndVisible();            
         }
 
         private void BeginObservingUIApplication()
