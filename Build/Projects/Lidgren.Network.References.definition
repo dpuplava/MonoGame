@@ -12,7 +12,7 @@
     <Reference Include="System" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Core" />
-    <Reference Include="monotouch" />
+    <Reference Include="Xamarin.iOS" />
   </Platform>
 
   <Platform Type="Linux">
@@ -32,12 +32,6 @@
     <Reference Include="System.Xml" />
     <Reference Include="System.Core" />
     <Reference Include="Mono.Android" />
-  </Platform>
-
-  <Platform Type="PSMobile">
-    <Reference Include="System" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Core" />
   </Platform>
 
   <Platform Type="Windows">

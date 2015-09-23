@@ -2,6 +2,11 @@
 [Tt]humbs.db
 *.DS_Store
 
+#Output Linux Installer
+Installers/Linux/InstallerData/
+*.run
+*.deb
+
 #Visual Studio files
 *.pidb
 *.userprefs
@@ -32,6 +37,9 @@ obj/
 [Dd]ebug*/
 [Rr]elease*/
 Ankh.NoLoad
+.vs/
+project.lock.json
+artifacts/
 
 #Tooling
 _ReSharper*/
@@ -66,3 +74,13 @@ Test/*.csproj
 *.speccache
 *.ncrunchproject
 *.ncrunchsolution
+
+#Mac Package Files
+*.pkg
+*.mpack
+
+#Nuget Packages
+**/*.nupkg
+
+#Zip files
+*.zip
