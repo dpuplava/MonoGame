@@ -466,6 +466,27 @@ namespace MonoGame.Tools.Pipeline
             projectview1.RefreshItem(projectview1.GetBaseIter(), item.OriginalPath, item.Exists, _controller.GetFullPath(item.OriginalPath));
         }
 
+
+#if MONOMAC || LINUX
+        string FindSystemMono ()
+        {
+            // El Capitan Support. /usr/bin is now read only and /usr/local/bin is NOT included
+            // in $PATH for apps... only the shell. So we need to manaully find the full path to 
+            // the right location.
+            string[] pathsToCheck = new string[] {
+                "/usr/bin",
+                "/usr/local/bin",
+                "/Library/Frameworks/Mono.framework/Versions/Current/bin",
+            };
+            foreach (var path in pathsToCheck) {
+                if (System.IO.File.Exists (System.IO.Path.Combine (path, "mono")))
+                    return System.IO.Path.Combine (path, "mono");
+            }
+            OutputAppend("Cound not find mono. Please install the latest version from http://www.mono-project.com");
+            return "mono";
+        }
+#endif
+
         public Process CreateProcess(string exe, string commands)
         {
             var _buildProcess = new Process();
@@ -474,7 +495,7 @@ namespace MonoGame.Tools.Pipeline
             _buildProcess.StartInfo.Arguments = commands;
 #endif
 #if MONOMAC || LINUX
-            _buildProcess.StartInfo.FileName = "mono";
+            _buildProcess.StartInfo.FileName = FindSystemMono ();
             if (_controller.LaunchDebugger) {
                 var port = Environment.GetEnvironmentVariable("MONO_DEBUGGER_PORT");
                 port = !string.IsNullOrEmpty (port) ? port : "55555";
@@ -713,46 +734,50 @@ namespace MonoGame.Tools.Pipeline
 
             // Update the state of all menu items.
 
-            NewAction.Sensitive = notBuilding;
-            OpenAction.Sensitive = notBuilding;
-            ImportAction.Sensitive = notBuilding;
+            Application.Invoke(delegate
+                { 
+                    NewAction.Sensitive = notBuilding;
+                    OpenAction.Sensitive = notBuilding;
+                    ImportAction.Sensitive = notBuilding;
 
-            SaveAction.Sensitive = projectOpenAndNotBuilding && _controller.ProjectDirty;
-            SaveAsAction.Sensitive = projectOpenAndNotBuilding;
-            CloseAction.Sensitive = projectOpenAndNotBuilding;
+                    SaveAction.Sensitive = projectOpenAndNotBuilding && _controller.ProjectDirty;
+                    SaveAsAction.Sensitive = projectOpenAndNotBuilding;
+                    CloseAction.Sensitive = projectOpenAndNotBuilding;
 
-            ExitAction.Sensitive = notBuilding;
+                    ExitAction.Sensitive = notBuilding;
 
-            AddAction.Sensitive = projectOpen;
+                    AddAction.Sensitive = projectOpen;
             
-            RenameAction.Sensitive = paths.Length == 1;
+                    RenameAction.Sensitive = paths.Length == 1;
             
-            DeleteAction.Sensitive = projectOpen && somethingSelected;
+                    DeleteAction.Sensitive = projectOpen && somethingSelected;
 
-            BuildAction.Sensitive = projectOpen;
-            BuildAction1.Sensitive = projectOpenAndNotBuilding;
+                    BuildAction.Sensitive = projectOpen;
+                    BuildAction1.Sensitive = projectOpenAndNotBuilding;
 
-            treerebuild.Sensitive = RebuildAction.Sensitive = projectOpenAndNotBuilding;
-            RebuildAction.Sensitive = treerebuild.Sensitive;
+                    treerebuild.Sensitive = RebuildAction.Sensitive = projectOpenAndNotBuilding;
+                    RebuildAction.Sensitive = treerebuild.Sensitive;
 
-            CleanAction.Sensitive = projectOpenAndNotBuilding;
-            CancelBuildAction.Sensitive = !notBuilding;
-            CancelBuildAction.Visible = !notBuilding;
+                    CleanAction.Sensitive = projectOpenAndNotBuilding;
+                    CancelBuildAction.Sensitive = !notBuilding;
+                    CancelBuildAction.Visible = !notBuilding;
 
-            #if GTK3
-            if(Global.UseHeaderBar)
-            {
-                new_button.Sensitive = NewAction.Sensitive;
-                open_button.Sensitive = OpenAction.Sensitive;
-                save_button.Sensitive = SaveAction.Sensitive;
-                build_button.Sensitive = BuildAction1.Sensitive;
-            }
-            #endif
+                    #if GTK3
+                    if (Global.UseHeaderBar)
+                    {
+                        new_button.Sensitive = NewAction.Sensitive;
+                        open_button.Sensitive = OpenAction.Sensitive;
+                        save_button.Sensitive = SaveAction.Sensitive;
+                        build_button.Sensitive = BuildAction1.Sensitive;
+                    }
+                    #endif
 
-            DebugModeAction.Sensitive = notBuilding;
+                    DebugModeAction.Sensitive = notBuilding;
 
-            UpdateUndoRedo(_controller.CanUndo, _controller.CanRedo);
-            UpdateRecentProjectList();
+                    UpdateUndoRedo(_controller.CanUndo, _controller.CanRedo);
+                    UpdateRecentProjectList();
+
+                });
         }
 
         public void UpdateRecentProjectList()
