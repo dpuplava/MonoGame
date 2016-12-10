@@ -84,9 +84,11 @@ namespace Microsoft.Xna.Framework.Graphics
         protected Texture2D(GraphicsDevice graphicsDevice, int width, int height, bool mipmap, SurfaceFormat format, SurfaceType type, bool shared, int arraySize)
 		{
             if (graphicsDevice == null)
-            {
                 throw new ArgumentNullException("graphicsDevice", FrameworkResources.ResourceCreationWhenDeviceIsNull);
-            }
+            if (width <= 0)
+                throw new ArgumentOutOfRangeException("width","Texture width must be greater than zero");
+            if (height <= 0)
+                throw new ArgumentOutOfRangeException("height","Texture height must be greater than zero");
             if (arraySize > 1 && !graphicsDevice.GraphicsCapabilities.SupportsTextureArrays)
                 throw new ArgumentException("Texture arrays are not supported on this graphics device", "arraySize");
 
@@ -133,12 +135,21 @@ namespace Microsoft.Xna.Framework.Graphics
         /// <param name="elementCount"></param>
         public void SetData<T>(int level, int arraySlice, Rectangle? rect, T[] data, int startIndex, int elementCount) where T : struct
         {
+            Rectangle resizedBounds = new Rectangle(0, 0, Math.Max(Bounds.Width >> level, 1), Math.Max(Bounds.Height >> level, 1));
+            if (level >= LevelCount)
+                throw new ArgumentException("Texture only has "+_levelCount+" levels", "level");
             if (data == null)
                 throw new ArgumentNullException("data");
-
+            if ((!rect.HasValue && (data.Length - startIndex < resizedBounds.Width * resizedBounds.Height)) || (rect.HasValue && (rect.Value.Height * rect.Value.Width > data.Length)))
+                throw new ArgumentException("data array is too small");
+            if (elementCount + startIndex > data.Length)
+                throw new ArgumentException("ElementCount must be a valid index in the data array", "elementCount");
             if (arraySlice > 0 && !GraphicsDevice.GraphicsCapabilities.SupportsTextureArrays)
                 throw new ArgumentException("Texture arrays are not supported on this graphics device", "arraySlice");
-
+            if (arraySlice >= ArraySize)
+                throw new ArgumentException("Texture array only has "+ArraySize+" textures","arraySlice");
+            if (rect.HasValue && !resizedBounds.Contains(rect.Value))
+                throw new ArgumentException("Rectangle must be inside the Texture Bounds", "rect");
             PlatformSetData<T>(level, arraySlice, rect, data, startIndex, elementCount);
         }
         /// <summary>
@@ -247,6 +258,11 @@ namespace Microsoft.Xna.Framework.Graphics
         /// <returns></returns>
 		public static Texture2D FromStream(GraphicsDevice graphicsDevice, Stream stream)
 		{
+            if (graphicsDevice == null)
+                throw new ArgumentNullException("graphicsDevice");
+            if (stream == null)
+                throw new ArgumentNullException("stream");
+
             try
             {
                 return PlatformFromStream(graphicsDevice, stream);

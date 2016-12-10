@@ -6,8 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using System.Runtime.InteropServices;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Input;
+using MonoGame.Utilities;
 
 namespace Microsoft.Xna.Framework
 {
@@ -28,6 +30,11 @@ namespace Microsoft.Xna.Framework
         public SdlGamePlatform(Game game)
             : base(game)
         {
+            // if we're on Windows, we need to detect the CPU arch and load the correct dlls
+            // on other system, the MonoGame.Framework.dll.config handles this
+            if (PlatformParameters.DetectWindowsArchitecture)
+                NativeHelper.InitDllDirectory();
+
             _game = game;
             _keys = new List<Keys>();
             Keyboard.SetKeys(_keys);
@@ -39,21 +46,14 @@ namespace Microsoft.Xna.Framework
             Sdl.Minor = sversion.Minor;
             Sdl.Patch = sversion.Patch;
 
-            try
-            {
-                // HACK: The current development version of SDL
-                // returns 2.0.4, to check SDL version we simply
-                // need to try and execute a function that's only
-                // available in the newer version of it.
-                Sdl.Window.SetResizable(IntPtr.Zero, false);
-                Sdl.Patch = 5;
-            }
-            catch { }
-
             var version = 100 * Sdl.Major + 10 * Sdl.Minor + Sdl.Patch;
 
             if (version <= 204)
                 Debug.WriteLine ("Please use SDL 2.0.5 or higher.");
+
+            // Needed so VS can debug the project on Windows
+            if (version >= 205 && CurrentPlatform.OS == OS.Windows && Debugger.IsAttached)
+                Sdl.SetHint("SDL_WINDOWS_DISABLE_THREAD_NAMING", "1");
 
             Sdl.Init((int)(
                 Sdl.InitFlags.Video |
@@ -64,6 +64,7 @@ namespace Microsoft.Xna.Framework
 
             Sdl.DisableScreenSaver();
 
+            GamePad.InitDatabase();
             Window = _view = new SdlGameWindow(_game);
 
             try
@@ -78,7 +79,7 @@ namespace Microsoft.Xna.Framework
 
         public override void BeforeInitialize ()
         {
-            _view.CreateWindow();
+            _view.InitGraphics();
             SdlRunLoop();
 
             base.BeforeInitialize ();
@@ -95,14 +96,13 @@ namespace Microsoft.Xna.Framework
 
             while (true)
             {
+                Threading.Run();
                 SdlRunLoop();
                 Game.Tick();
 
                 if (_isExiting > 0)
                     break;
             }
-
-            Dispose();
         }
 
         private void SdlRunLoop()
@@ -115,16 +115,19 @@ namespace Microsoft.Xna.Framework
                     _isExiting++;
                 else if (ev.Type == Sdl.EventType.JoyDeviceAdded)
                     Joystick.AddDevice(ev.JoystickDevice.Which);
+                else if (ev.Type == Sdl.EventType.ControllerDeviceRemoved)
+                    GamePad.RemoveDevice(ev.ControllerDevice.Which);
                 else if (ev.Type == Sdl.EventType.JoyDeviceRemoved)
-                    Joystick.RemoveDevice(ev.JoystickDevice.Which);
+                    Joystick.RemoveDevice(ev.JoystickDevice.Which);                
                 else if (ev.Type == Sdl.EventType.MouseWheel)
                     Mouse.ScrollY += ev.Wheel.Y * 120;
-                else if (ev.Type == Sdl.EventType.KeyDown)
-                {
-                    var key = KeyboardUtil.ToXna(ev.Key.Keysym.Sym);
-
-                    if (!_keys.Contains(key))
-                        _keys.Add(key);
+                else if (ev.Type == Sdl.EventType.KeyDown) {
+                    var key = KeyboardUtil.ToXna (ev.Key.Keysym.Sym);
+                    if (!_keys.Contains (key))
+                        _keys.Add (key);
+                    char character = (char)ev.Key.Keysym.Sym;
+                    if (char.IsControl (character))
+                        _view.CallTextInput (character, key);
                 }
                 else if (ev.Type == Sdl.EventType.KeyUp)
                 {
@@ -133,21 +136,28 @@ namespace Microsoft.Xna.Framework
                 }
                 else if (ev.Type == Sdl.EventType.TextInput)
                 {
-                    string text;
+                    int len = 0;
+                    string text = String.Empty;
                     unsafe
                     {
-                        text = new string((char*)ev.Text.Text);
+                        while (Marshal.ReadByte ((IntPtr)ev.Text.Text, len) != 0) {
+                            len++;
+                        }
+                        var buffer = new byte [len];
+                        Marshal.Copy ((IntPtr)ev.Text.Text, buffer, 0, len);
+                        text = System.Text.Encoding.UTF8.GetString (buffer);
                     }
-
                     if (text.Length == 0)
                         continue;
-
                     foreach (var c in text)
-                        _view.CallTextInput(c);
+                    {
+                        var key = KeyboardUtil.ToXna((int)c);
+                        _view.CallTextInput(c, key);
+                    }
                 }
                 else if (ev.Type == Sdl.EventType.WindowEvent)
                 {
-                    if (ev.Window.EventID == Sdl.Window.EventId.Resized)
+                    if (ev.Window.EventID == Sdl.Window.EventId.Resized || ev.Window.EventID == Sdl.Window.EventId.SizeChanged)
                         _view.ClientResize(ev.Window.Data1, ev.Window.Data2);
                     else if (ev.Window.EventID == Sdl.Window.EventId.FocusGained)
                         IsActive = true;

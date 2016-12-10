@@ -21,12 +21,16 @@ namespace Microsoft.Xna.Framework.Content.Pipeline.Processors
     [ContentProcessor(DisplayName = "Sprite Font Description - MonoGame")]
     public class FontDescriptionProcessor : ContentProcessor<FontDescription, SpriteFontContent>
     {
+        [DefaultValue(true)]
+        public virtual bool PremultiplyAlpha { get; set; }
+
         [DefaultValue(typeof(TextureProcessorOutputFormat), "Compressed")]
         public virtual TextureProcessorOutputFormat TextureFormat { get; set; }
 
         public FontDescriptionProcessor()
         {
-            this.TextureFormat = TextureProcessorOutputFormat.Compressed;
+            PremultiplyAlpha = true;
+            TextureFormat = TextureProcessorOutputFormat.Compressed;
         }
 
         public override SpriteFontContent Process(FontDescription input,
@@ -82,7 +86,11 @@ namespace Microsoft.Xna.Framework.Content.Pipeline.Processors
 #endif
 
 			context.Logger.LogMessage ("Building Font {0}", fontName);
-			try {
+            
+            // Get the platform specific texture profile.
+            var texProfile = TextureProfile.ForPlatform(context.TargetPlatform);
+
+            {
 				if (!File.Exists(fontName)) {
 					throw new Exception(string.Format("Could not load {0}", fontName));
 				}
@@ -96,11 +104,11 @@ namespace Microsoft.Xna.Framework.Content.Pipeline.Processors
 					GlyphCropper.Crop(glyph);
 				}
 
-                var format = GraphicsUtil.GetTextureFormatForPlatform(TextureFormat, context.TargetPlatform);
-                var requiresPOT = GraphicsUtil.RequiresPowerOfTwo(format, context.TargetPlatform, context.TargetProfile);
-                var requiresSquare = GraphicsUtil.RequiresSquare(format, context.TargetPlatform);
+                // We need to know how to pack the glyphs.
+                bool requiresPot, requiresSquare;
+                texProfile.Requirements(context, TextureFormat, out requiresPot, out requiresSquare);
 
-                var face = GlyphPacker.ArrangeGlyphs(glyphs, requiresPOT, requiresSquare);
+                var face = GlyphPacker.ArrangeGlyphs(glyphs, requiresPot, requiresSquare);
 
 				// Adjust line and character spacing.
 				lineSpacing += input.Spacing;
@@ -123,16 +131,35 @@ namespace Microsoft.Xna.Framework.Content.Pipeline.Processors
 						output.Kerning.Add(new Vector3(0, texRect.Width, 0));
 				}
 
-                output.Texture.Faces[0].Add(face);
+                output.Texture.Faces[0].Add(face);            
+			}
 
-                if (GraphicsUtil.IsCompressedTextureFormat(format))
+            if (PremultiplyAlpha)
+            {
+                var bmp = output.Texture.Faces[0][0];
+                var data = bmp.GetPixelData();
+                var idx = 0;
+                for (; idx < data.Length; )
                 {
-                    GraphicsUtil.CompressTexture(context.TargetProfile, output.Texture, format, context, false, true);
+                    var r = data[idx + 0];
+                    var g = data[idx + 1];
+                    var b = data[idx + 2];
+                    var a = data[idx + 3];
+                    var col = Color.FromNonPremultiplied(r, g, b, a);
+
+                    data[idx + 0] = col.R;
+                    data[idx + 1] = col.G;
+                    data[idx + 2] = col.B;
+                    data[idx + 3] = col.A;
+
+                    idx += 4;
                 }
-			}
-			catch(Exception ex) {
-				context.Logger.LogImportantMessage("{0}", ex.ToString());
-			}
+
+                bmp.SetPixelData(data);
+            }
+
+            // Perform the final texture conversion.
+            texProfile.ConvertTexture(context, output.Texture, TextureFormat, false, true);    
 
             return output;
         }

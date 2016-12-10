@@ -13,6 +13,10 @@ namespace MonoGame.Tools.Pipeline
 
         private void InitializeComponent()
         {
+            Style = "Dialog";
+            Width = 100;
+            Height = 100;
+
             layout1 = new DynamicLayout();
             layout1.DefaultSpacing = new Size(8, 8);
             layout1.Padding = new Padding(6);

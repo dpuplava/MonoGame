@@ -5,11 +5,13 @@
 using System;
 using Eto.Drawing;
 using Eto.Forms;
-using Eto.WinForms.Drawing;
+using Eto.Wpf.Drawing;
 using System.IO;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
+using System.Windows.Media.Imaging;
+using System.Windows.Media;
 
 namespace MonoGame.Tools.Pipeline
 {
@@ -24,6 +26,21 @@ namespace MonoGame.Tools.Pipeline
         {
             var reg = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
             IsWindows10 = (reg.GetValue("ProductName") as string).StartsWith("Windows 10");
+
+            var file = ExtractIcon(0).ToBitmap();
+            var fileMissing = ExtractIcon(271).ToBitmap();
+            var folder = ExtractIcon(4).ToBitmap();
+            var folderMissing = ExtractIcon(234).ToBitmap();
+
+            _files["."] = ToEtoImage(file);
+            _fileMissing = ToEtoImage(fileMissing);
+            _folder = ToEtoImage(folder);
+            _folderMissing = ToEtoImage(folderMissing);
+
+            _xwtFiles["."] = ToXwtImage(file);
+            _xwtFileMissing = ToXwtImage(fileMissing);
+            _xwtFolder = ToXwtImage(folder);
+            _xwtFolderMissing = ToXwtImage(folderMissing);
         }
 
         public static System.Drawing.Icon ExtractIcon(int number)
@@ -35,48 +52,47 @@ namespace MonoGame.Tools.Pipeline
             return System.Drawing.Icon.FromHandle(large);
         }
 
-        private static Image PlatformGetDirectoryIcon(bool exists)
+        private static System.Drawing.Bitmap PlatformGetFileIcon(string path)
         {
-            System.Drawing.Bitmap icon;
-
-            if(exists)
-                icon = ExtractIcon(4).ToBitmap();
-            else
-                icon = ExtractIcon(234).ToBitmap();
-
-            return new Bitmap(new BitmapHandler(icon));
+            return System.Drawing.Icon.ExtractAssociatedIcon(path).ToBitmap();
         }
 
-        private static Image PlatformGetFileIcon(string path, bool exists)
+        private static Bitmap ToEtoImage(System.Drawing.Bitmap bitmap)
         {
-            System.Drawing.Bitmap icon;
+            var ret = new BitmapImage();
 
-            if (exists)
+            using (MemoryStream stream = new MemoryStream())
             {
-                try
-                {
-                    icon = System.Drawing.Icon.ExtractAssociatedIcon(path).ToBitmap();
-                }
-                catch
-                {
-                    icon = ExtractIcon(0).ToBitmap();
-                }
-            }
-            else
-                icon = ExtractIcon(271).ToBitmap();
+                bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                stream.Position = 0;
 
-            return new Bitmap(new BitmapHandler(icon));
+                ret.BeginInit();
+                ret.StreamSource = stream;
+                ret.CacheOption = BitmapCacheOption.OnLoad;
+                ret.EndInit();
+            }
+
+            return new Bitmap(new BitmapHandler(ret));
+        }
+
+        private static Xwt.Drawing.Image ToXwtImage(System.Drawing.Bitmap bitmap)
+        {
+            Xwt.Drawing.Image ret;
+
+            using (MemoryStream stream = new MemoryStream())
+            {
+                bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                stream.Position = 0;
+                ret = Xwt.Drawing.Image.FromStream(stream);
+            }
+           
+            return ret.Scale(0.5);
         }
 
         private static void PlatformShowOpenWithDialog(string filePath)
         {
             var args = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "shell32.dll");
             Process.Start("rundll32.exe", args + ",OpenAs_RunDLL " + filePath);
-        }
-
-        private static bool PlatformSetIcon(Command cmd)
-        {
-            return false;
         }
     }
 }

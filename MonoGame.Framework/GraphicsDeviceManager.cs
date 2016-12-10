@@ -99,7 +99,18 @@ namespace Microsoft.Xna.Framework
             if (_graphicsDevice != null)
                 return;
 
-            Initialize();
+            try
+            {
+                Initialize();
+            }
+            catch (NoSuitableGraphicsDeviceException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new NoSuitableGraphicsDeviceException("Failed to create graphics device!", ex);
+            }
 
             OnDeviceCreated(EventArgs.Empty);
         }
@@ -206,10 +217,25 @@ namespace Microsoft.Xna.Framework
             presentationParameters.DisplayOrientation = _game.Window.CurrentOrientation;
             presentationParameters.DeviceWindowHandle = _game.Window.Handle;
 
-            // TODO: This isn't correct... we need to query the hardware
-            // to see what the max quality level supported is for the current
-            // device and back buffer format.
-            presentationParameters.MultiSampleCount = _preferMultiSampling ? 4 : 0;
+            if (_preferMultiSampling)
+            {
+                if (_graphicsDevice == null)
+                {
+                    // We can't determine the multisampling level by calling PlatformSetMultiSamplingToMaximum yet.
+                    // Once the device initializes, it will call CreateSizeDependentResources which will perform
+                    // a call to PlatformSetMultiSamplingToMaximum.
+                    presentationParameters.MultiSampleCount = 32;
+                }
+                else
+                {
+                    int quality;
+                    _graphicsDevice.PlatformSetMultiSamplingToMaximum(presentationParameters, out quality);
+                }
+            }
+            else
+            {
+                presentationParameters.MultiSampleCount = 0;
+            }
         }
 
         /// <summary>
@@ -225,7 +251,7 @@ namespace Microsoft.Xna.Framework
 
             PreparePresentationParameters(_graphicsDevice.PresentationParameters);
 
-            // TOOD: Should this trigger some sort of device reset?
+            // TODO: Should this trigger some sort of device reset?
             _graphicsDevice.GraphicsProfile = GraphicsProfile;
 
             // Allow for optional platform specific behavior.
@@ -332,17 +358,14 @@ namespace Microsoft.Xna.Framework
         /// <summary>
         /// Gets or sets the boolean which defines how window switches from windowed to fullscreen state.
         /// "Hard" mode(true) is slow to switch, but more effecient for performance, while "soft" mode(false) is vice versa.
-        /// The default value is <c>true</c>. Can only be changed before graphics device is created (in game's constructor).
+        /// The default value is <c>true</c>.
         /// </summary>
         public bool HardwareModeSwitch
         {
             get { return _hardwareModeSwitch;}
             set
             {
-                if (_graphicsDevice == null) 
-                    _hardwareModeSwitch = value;
-                else 
-                    throw new InvalidOperationException("This property can only be changed before graphics device is created(in game constructor).");
+                _hardwareModeSwitch = value;
             }
         }
 

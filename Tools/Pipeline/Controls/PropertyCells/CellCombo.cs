@@ -3,35 +3,30 @@
 // file 'LICENSE.txt', which is part of this source code package.
 
 using System;
-using Eto.Drawing;
 using Eto.Forms;
 
 namespace MonoGame.Tools.Pipeline
 {
+    [CellAttribute(typeof(Enum))]
+    [CellAttribute(typeof(ImporterTypeDescription))]
+    [CellAttribute(typeof(ProcessorTypeDescription))]
     public class CellCombo : CellBase
     {
-        public static int Height;
-
-        private object _type;
-        private Rectangle _lastRec;
-
-        public CellCombo(string category, string name, object value, object type, EventHandler eventHandler) : base(category, name, value, eventHandler)
+        public override void OnCreate()
         {
-            _type = type;
-
-            if (value is ImporterTypeDescription)
-                DisplayValue = (value as ImporterTypeDescription).DisplayName;
-            else if (value is ProcessorTypeDescription)
-                DisplayValue = (value as ProcessorTypeDescription).DisplayName;
+            if (Value is ImporterTypeDescription)
+                DisplayValue = (Value as ImporterTypeDescription).DisplayName;
+            else if (Value is ProcessorTypeDescription)
+                DisplayValue = (Value as ProcessorTypeDescription).DisplayName;
         }
 
         public override void Edit(PixelLayout control)
         {
             var combo = new DropDown();
 
-            if (_type is Enum)
+            if (_type.IsSubclassOf(typeof(Enum)))
             {
-                var values = Enum.GetValues(_type.GetType());
+                var values = Enum.GetValues(_type);
                 foreach (var v in values)
                 {
                     combo.Items.Add(v.ToString());
@@ -40,7 +35,7 @@ namespace MonoGame.Tools.Pipeline
                         combo.SelectedIndex = combo.Items.Count - 1;
                 }
             }
-            else if (_type is ImporterTypeDescription)
+            else if (_type == typeof(ImporterTypeDescription))
             {
                 foreach (var v in PipelineTypes.Importers)
                 {
@@ -61,9 +56,8 @@ namespace MonoGame.Tools.Pipeline
                 }
             }
 
-            Height = _lastRec.Height;
             combo.Style = "OverrideSize";
-            combo.Width = _lastRec.Width + 1;
+            combo.Width = _lastRec.Width;
             combo.Height = _lastRec.Height;
             control.Add(combo, _lastRec.X, _lastRec.Y);
 
@@ -72,24 +66,16 @@ namespace MonoGame.Tools.Pipeline
                 if (_eventHandler == null || combo.SelectedIndex < 0)
                     return;
 
-                if (_type is Enum)
-                    _eventHandler(Enum.Parse(Value.GetType(), combo.SelectedValue.ToString()), EventArgs.Empty);
-                else if (_type is ImporterTypeDescription)
+                if (_type.IsSubclassOf(typeof(Enum)))
+                    _eventHandler(Enum.Parse(_type, combo.SelectedValue.ToString()), EventArgs.Empty);
+                else if (_type == typeof(ImporterTypeDescription))
                     _eventHandler(PipelineTypes.Importers[combo.SelectedIndex], EventArgs.Empty);
                 else
                     _eventHandler(PipelineTypes.Processors[combo.SelectedIndex], EventArgs.Empty);
 
+                combo.Enabled = true;
                 control.Add(combo, _lastRec.X, _lastRec.Y);
             };
-        }
-
-        public override void Draw(Graphics g, Rectangle rec, int separatorPos, bool selected)
-        {
-            _lastRec = rec;
-            _lastRec.X += separatorPos;
-            _lastRec.Width -= separatorPos;
-
-            base.Draw(g, rec, separatorPos, selected);
         }
     }
 }

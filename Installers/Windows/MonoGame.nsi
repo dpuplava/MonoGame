@@ -106,17 +106,27 @@ Section "MonoGame Core Components" CoreComponents ;No components page, name is n
   File '..\..\MonoGame.Framework\bin\Android\AnyCPU\Release\*.dll'
   File '..\..\MonoGame.Framework\bin\Android\AnyCPU\Release\*.xml'
   
-  ; Install OUYA Assemblies
-  SetOutPath '$INSTDIR\Assemblies\OUYA'
-  File '..\..\MonoGame.Framework\bin\Ouya\AnyCPU\Release\*.dll'
-  File '..\..\MonoGame.Framework\bin\Ouya\AnyCPU\Release\*.xml'
-  
-  ; Install Desktop OpenGL Assemblies
+  ; Install DesktopGL Assemblies
   SetOutPath '$INSTDIR\Assemblies\DesktopGL'
   File /nonfatal '..\..\MonoGame.Framework\bin\WindowsGL\AnyCPU\Release\*.dll'
   File /nonfatal ' ..\..\MonoGame.Framework\bin\WindowsGL\AnyCPU\Release\*.xml'
-  File '..\..\ThirdParty\Dependencies\OpenTK.dll'
-  File '..\..\ThirdParty\Dependencies\OpenTK.dll.config'
+  File '..\..\ThirdParty\Dependencies\SDL\MacOS\Universal\libSDL2-2.0.0.dylib'
+  File '..\..\ThirdParty\Dependencies\openal-soft\MacOS\Universal\libopenal.1.dylib'
+  File '..\..\ThirdParty\Dependencies\MonoGame.Framework.dll.config'
+  
+  ; Install x86 DesktopGL Dependencies
+  SetOutPath '$INSTDIR\Assemblies\DesktopGL\x86'
+  File '..\..\ThirdParty\Dependencies\SDL\Windows\x86\SDL2.dll'
+  File '..\..\ThirdParty\Dependencies\openal-soft\Windows\x86\soft_oal.dll'
+  File '..\..\ThirdParty\Dependencies\SDL\Linux\x86\libSDL2-2.0.so.0'
+  File '..\..\ThirdParty\Dependencies\openal-soft\Linux\x86\libopenal.so.1'
+  
+  ; Install x64 DesktopGL Dependencies
+  SetOutPath '$INSTDIR\Assemblies\DesktopGL\x64'
+  File '..\..\ThirdParty\Dependencies\SDL\Windows\x64\SDL2.dll'
+  File '..\..\ThirdParty\Dependencies\openal-soft\Windows\x64\soft_oal.dll'
+  File '..\..\ThirdParty\Dependencies\SDL\Linux\x64\libSDL2-2.0.so.0'
+  File '..\..\ThirdParty\Dependencies\openal-soft\Linux\x64\libopenal.so.1'
   
   ; Install Windows Desktop DirectX Assemblies
   SetOutPath '$INSTDIR\Assemblies\Windows'
@@ -132,18 +142,6 @@ Section "MonoGame Core Components" CoreComponents ;No components page, name is n
   SetOutPath '$INSTDIR\Assemblies\WindowsPhone81'
   File '..\..\MonoGame.Framework\bin\WindowsPhone81\AnyCPU\Release\*.dll'
   File '..\..\MonoGame.Framework\bin\WindowsPhone81\AnyCPU\Release\*.xml'
-
-  ; Install Windows Phone ARM Assemblies
-  SetOutPath '$INSTDIR\Assemblies\WindowsPhone\ARM'
-  File '..\..\MonoGame.Framework\bin\WindowsPhone\ARM\Release\*.dll'
-  File '..\..\MonoGame.Framework\bin\WindowsPhone\ARM\Release\*.xml'
-  File '..\..\MonoGame.Framework\bin\WindowsPhone\ARM\Release\*.winmd'
-
-  ; Install Windows Phone x86 Assemblies
-  SetOutPath '$INSTDIR\Assemblies\WindowsPhone\x86'
-  File '..\..\MonoGame.Framework\bin\WindowsPhone\x86\Release\*.dll'
-  File '..\..\MonoGame.Framework\bin\WindowsPhone\x86\Release\*.xml'
-  File '..\..\MonoGame.Framework\bin\WindowsPhone\x86\Release\*.winmd'
 
   ; Install Windows 10 UAP Assemblies
   SetOutPath '$INSTDIR\Assemblies\WindowsUniversal'
@@ -162,11 +160,8 @@ Section "MonoGame Core Components" CoreComponents ;No components page, name is n
   WriteRegStr HKLM 'SOFTWARE\Microsoft\.NETFramework\v4.0.30319\AssemblyFoldersEx\${APPNAME} for Windows' '' '$INSTDIR\Assemblies\Windows'
   WriteRegStr HKLM 'SOFTWARE\Microsoft\.NETFramework\v4.5.50709\AssemblyFoldersEx\${APPNAME} for Windows Store' '' '$INSTDIR\Assemblies\Windows8'
   WriteRegStr HKLM 'SOFTWARE\Microsoft\.NETFramework\v4.5.50709\AssemblyFoldersEx\${APPNAME} for Windows Phone 8.1' '' '$INSTDIR\Assemblies\WindowsPhone81'
-  WriteRegStr HKLM 'SOFTWARE\Microsoft\.NETFramework\v4.0.30319\AssemblyFoldersEx\${APPNAME} for Windows Phone ARM' '' '$INSTDIR\Assemblies\WindowsPhone\ARM'
-  WriteRegStr HKLM 'SOFTWARE\Microsoft\.NETFramework\v4.0.30319\AssemblyFoldersEx\${APPNAME} for Windows Phone x86' '' '$INSTDIR\Assemblies\WindowsPhone\x86'
   WriteRegStr HKLM 'SOFTWARE\Microsoft\.NETFramework\v4.0.30319\AssemblyFoldersEx\${APPNAME} for Windows 10 Universal' '' '$INSTDIR\Assemblies\WindowsUniversal'
   WriteRegStr HKLM 'SOFTWARE\Microsoft\MonoAndroid\v2.3\AssemblyFoldersEx\${APPNAME} for Android' '' '$INSTDIR\Assemblies\Android'
-  WriteRegStr HKLM 'SOFTWARE\Microsoft\MonoAndroid\v2.3\AssemblyFoldersEx\${APPNAME} for OUYA' '' '$INSTDIR\Assemblies\OUYA'
   WriteRegStr HKLM 'SOFTWARE\Microsoft\MonoTouch\v1.0\AssemblyFoldersEx\${APPNAME} for iOS' '' '$INSTDIR\Assemblies\iOS'
 
   IfFileExists $WINDIR\SYSWOW64\*.* Is64bit Is32bit
@@ -178,10 +173,7 @@ Section "MonoGame Core Components" CoreComponents ;No components page, name is n
     WriteRegStr HKLM 'SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.5.50709\AssemblyFoldersEx\${APPNAME} for Windows Store' '' '$INSTDIR\Assemblies\Windows8'
     WriteRegStr HKLM 'SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.5.50709\AssemblyFoldersEx\${APPNAME} for Windows Phone 8.1' '' '$INSTDIR\Assemblies\WindowsPhone81'
     WriteRegStr HKLM 'SOFTWARE\Wow6432Node\Microsoft\MonoAndroid\v2.3\AssemblyFoldersEx\${APPNAME} for Android' '' '$INSTDIR\Assemblies\Android'
-    WriteRegStr HKLM 'SOFTWARE\Wow6432Node\Microsoft\MonoAndroid\v2.3\AssemblyFoldersEx\${APPNAME} for OUYA' '' '$INSTDIR\Assemblies\OUYA'
     WriteRegStr HKLM 'SOFTWARE\Wow6432Node\Microsoft\MonoTouch\v1.0\AssemblyFoldersEx\${APPNAME} for iOS' '' '$INSTDIR\Assemblies\iOS'
-    WriteRegStr HKLM 'SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319\AssemblyFoldersEx\${APPNAME} for Windows Phone ARM' '' '$INSTDIR\Assemblies\WindowsPhone\ARM'
-    WriteRegStr HKLM 'SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319\AssemblyFoldersEx\${APPNAME} for Windows Phone x86' '' '$INSTDIR\Assemblies\WindowsPhone\x86'
     WriteRegStr HKLM 'SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319\AssemblyFoldersEx\${APPNAME} for Windows 10 Universal' '' '$INSTDIR\Assemblies\WindowsUniversal'
 
   End32Bitvs64BitCheck:
@@ -201,12 +193,6 @@ Section "MonoGame Core Components" CoreComponents ;No components page, name is n
   WriteUninstaller "uninstall.exe"
 
 
-SectionEnd
-
-Section "OpenAL" OpenAL
-  ; SetOutPath $INSTDIR
-  File '..\..\ThirdParty\Dependencies\oalinst.exe'
-  ExecWait '"$INSTDIR\oalinst.exe /S"'
 SectionEnd
 
 Section "Visual Studio 2010 Templates" VS2010
@@ -264,6 +250,7 @@ Section "Visual Studio 2015 Templates" VS2015
   InstallTemplates:
     SetOutPath "$1\Visual C#\MonoGame"
     File /r '..\..\ProjectTemplates\VisualStudio2010\*.zip'
+    File /r '..\..\ProjectTemplates\VisualStudio2013\WindowsPhone8.1.zip'
     File /r '..\..\ProjectTemplates\VisualStudio2015\*.zip'
     GOTO EndTemplates
   CannotInstallTemplates:
@@ -295,7 +282,6 @@ Section "Start Menu Shortcuts" Menu
 SectionEnd
 
 LangString CoreComponentsDesc ${LANG_ENGLISH} "Install the Runtimes and the MSBuild extensions for MonoGame"
-LangString OpenALDesc ${LANG_ENGLISH} "Install the OpenAL drivers"
 LangString MonoDevelopDesc ${LANG_ENGLISH} "Install the project templates for MonoDevelop"
 LangString VS2010Desc ${LANG_ENGLISH} "Install the project templates for Visual Studio 2010"
 LangString VS2012Desc ${LANG_ENGLISH} "Install the project templates for Visual Studio 2012"
@@ -305,7 +291,6 @@ LangString MenuDesc ${LANG_ENGLISH} "Add a link to the MonoGame website to your 
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${CoreComponents} $(CoreComponentsDesc)
-  !insertmacro MUI_DESCRIPTION_TEXT ${OpenAL} $(OpenALDesc)
   !insertmacro MUI_DESCRIPTION_TEXT ${MonoDevelop} $(MonoDevelopDesc)
   !insertmacro MUI_DESCRIPTION_TEXT ${VS2010} $(VS2010Desc)
   !insertmacro MUI_DESCRIPTION_TEXT ${VS2012} $(VS2012Desc)
@@ -375,7 +360,6 @@ Section "Uninstall"
   DeleteRegKey HKLM 'SOFTWARE\Microsoft\.NETFramework\v4.0.30319\AssemblyFoldersEx\${APPNAME} for Windows Phone x86'
   DeleteRegKey HKLM 'SOFTWARE\Microsoft\.NETFramework\v4.5.50709\AssemblyFoldersEx\${APPNAME} for Windows 10 UAP' 
   DeleteRegKey HKLM 'SOFTWARE\Microsoft\MonoAndroid\v2.3\AssemblyFoldersEx\${APPNAME} for Android'
-  DeleteRegKey HKLM 'SOFTWARE\Microsoft\MonoAndroid\v2.3\AssemblyFoldersEx\${APPNAME} for OUYA'
   DeleteRegKey HKLM 'SOFTWARE\Microsoft\MonoTouch\v1.0\AssemblyFoldersEx\${APPNAME} for iOS'
 
   DeleteRegKey HKCU 'Software\Microsoft\VisualStudio\10.0\Default Editors\mgcb'
@@ -397,7 +381,6 @@ Section "Uninstall"
     DeleteRegKey HKLM 'SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319\AssemblyFoldersEx\${APPNAME} for Windows Phone x86'
     DeleteRegKey HKLM 'SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319\AssemblyFoldersEx\${APPNAME} for Windows 10 UAP'
     DeleteRegKey HKLM 'SOFTWARE\Wow6432Node\Microsoft\MonoAndroid\v2.3\AssemblyFoldersEx\${APPNAME} for Android'
-    DeleteRegKey HKLM 'SOFTWARE\Wow6432Node\Microsoft\MonoAndroid\v2.3\AssemblyFoldersEx\${APPNAME} for OUYA'
 	DeleteRegKey HKLM 'SOFTWARE\Wow6432Node\Microsoft\MonoTouch\v1.0\AssemblyFoldersEx\${APPNAME} for iOS'
 
 

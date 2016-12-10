@@ -3,50 +3,14 @@
 // file 'LICENSE.txt', which is part of this source code package.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Eto.Drawing;
 using Eto.Forms;
 
 namespace MonoGame.Tools.Pipeline
 {
-    static class PropInfo
-    {
-        public static int TextHeight;
-        public static Color TextColor;
-        public static Color BackColor;
-        public static Color HoverTextColor;
-        public static Color HoverBackColor;
-        public static Color DisabledTextColor;
-        public static Color BorderColor;
-
-        static PropInfo()
-        {
-            TextHeight = (int)SystemFonts.Default().LineHeight;
-            TextColor = SystemColors.ControlText;
-            BackColor = SystemColors.ControlBackground;
-            HoverTextColor = SystemColors.HighlightText;
-            HoverBackColor = SystemColors.Highlight;
-            DisabledTextColor = SystemColors.ControlText;
-            DisabledTextColor.A = 0.4f;
-            BorderColor = Global.Unix ? SystemColors.WindowBackground : SystemColors.Control;
-        }
-
-        public static Color GetTextColor(bool selected, bool disabled)
-        {
-            if (disabled)
-                return DisabledTextColor;
-
-            return selected ? HoverTextColor : TextColor;
-        }
-
-        public static Color GetBackgroundColor(bool selected)
-        {
-            return selected ? HoverBackColor : BackColor;
-        }
-    }
-
     public partial class PropertyGridTable
     {
         private const int _spacing = 12;
@@ -55,23 +19,26 @@ namespace MonoGame.Tools.Pipeline
 
         public bool Group { get; set; }
 
+        private IEnumerable<Type> _cellTypes;
         private CursorType _currentCursor;
         private CellBase _selectedCell;
         private List<CellBase> _cells;
         private Point _mouseLocation;
         private int _separatorPos;
         private int _moveSeparator;
-        private bool _edit;
+        private int _height;
+        private bool _skipEdit;
 
         public PropertyGridTable()
         {
             InitializeComponent();
 
+            _cellTypes = Assembly.GetExecutingAssembly().GetTypes().Where(t => t.IsClass && t.IsSubclassOf(typeof(CellBase)));
             _separatorPos = 100;
             _mouseLocation = new Point(-1, -1);
             _cells = new List<CellBase>();
             _moveSeparator = -_separatorWidth / 2 - 1;
-            _edit = false;
+            _skipEdit = false;
 
             Group = true;
         }
@@ -82,29 +49,61 @@ namespace MonoGame.Tools.Pipeline
             ClearChildren();
         }
 
-        private void ClearChildren()
+        private bool ClearChildren()
         {
             var children = pixel1.Children.ToList();
+            var ret = children.Count > 1;
 
             foreach (var control in children)
+            {
                 if (control != drawable)
+                {
+                    if (control.Tag is CellBase && (control.Tag as CellBase).OnKill != null)
+                        (control.Tag as CellBase).OnKill();
+
                     pixel1.Remove(control);
+                }
+            }
+
+            return ret;
         }
 
-        public void AddEntry(string category, string name, object value, object type, EventHandler eventHandler = null, bool editable = true)
+        private Type GetCellType(IEnumerable<Type> types, string name, Type type)
         {
-            if (type is Boolean)
-                _cells.Add(new CellBool(category, name, value, type, eventHandler));
-            else if (type is Enum || type is ImporterTypeDescription || type is ProcessorTypeDescription)
-                _cells.Add(new CellCombo(category, name, value, type, eventHandler));
-            else if (name.Contains("Dir"))
-                _cells.Add(new CellPath(category, name, value, eventHandler));
-            else if (type is IList)
-                _cells.Add(new CellRefs(category, name, value, eventHandler));
-            else if (type is Microsoft.Xna.Framework.Color)
-                _cells.Add(new CellColor(category, name, value, eventHandler));
-            else
-                _cells.Add(new CellText(category, name, value, eventHandler, editable));
+            Type ret = null;
+
+            foreach (var ct in types)
+            {
+                var attrs = ct.GetCustomAttributes<CellAttribute>();
+
+                foreach (var a in attrs)
+                {
+                    if (a.Type == type || type.IsSubclassOf(a.Type))
+                    {
+                        if (a.Name == name)
+                        {
+                            ret = ct;
+                            break;
+                        }
+
+                        if (string.IsNullOrEmpty(a.Name) && ret == null)
+                            ret = ct;
+                    }
+                }
+            }
+
+            return ret;
+        }
+
+        public void AddEntry(string category, string name, object value, Type type, EventHandler eventHandler = null, bool editable = true)
+        {
+            var cellType = GetCellType(_cellTypes, name, type);
+
+            var cell = (cellType == null) ? new CellText() : (CellBase)Activator.CreateInstance(cellType);
+            cell.Create(category, name, value, type, eventHandler);
+            cell.Editable = (cellType != null) && editable;
+
+            _cells.Add(cell);
         }
 
         public void Update()
@@ -131,33 +130,35 @@ namespace MonoGame.Tools.Pipeline
             var font = SystemFonts.Default();
             font = new Font(font.Family, font.Size, FontStyle.Bold);
 
-            g.FillRectangle(PropInfo.BorderColor, rec);
-            g.DrawText(SystemFonts.Default(), PropInfo.TextColor, rec.X + 1, rec.Y + (rec.Height - font.LineHeight) / 2, text);
+            g.FillRectangle(DrawInfo.BorderColor, rec);
+            g.DrawText(SystemFonts.Default(), DrawInfo.TextColor, rec.X + 1, rec.Y + (rec.Height - font.LineHeight) / 2, text);
         }
 
         private void Drawable_Paint(object sender, PaintEventArgs e)
         {
             var g = e.Graphics;
-            var rec = new Rectangle(0, 0, drawable.Width - 1, PropInfo.TextHeight + _spacing);
+            var rec = new Rectangle(0, 0, drawable.Width - 1, DrawInfo.TextHeight + _spacing);
             var overGroup = false;
             string prevCategory = null;
 
             _separatorPos = Math.Min(Width - _separatorSafeDistance, Math.Max(_separatorSafeDistance, _separatorPos));
             _selectedCell = null;
 
-            g.Clear(PropInfo.BackColor);
+            g.Clear(DrawInfo.BackColor);
 
             if (_cells.Count == 0)
             {
-                drawable.Height = 1;
+                drawable.Height = _height = 10;
                 return;
             }
 
             // Draw separator for not filled rows
-            g.FillRectangle(PropInfo.BorderColor, _separatorPos - 1, 0, 1, Height);
+            g.FillRectangle(DrawInfo.BorderColor, _separatorPos - 1, 0, 1, Height);
 
             foreach (var c in _cells)
             {
+                rec.Height = c.Height + _spacing;
+
                 // Draw group
                 if (prevCategory != c.Category)
                 {
@@ -166,7 +167,7 @@ namespace MonoGame.Tools.Pipeline
                         DrawGroup(g, rec, c.Category);
                         prevCategory = c.Category;
                         overGroup |= rec.Contains(_mouseLocation);
-                        rec.Y += PropInfo.TextHeight + _spacing;
+                        rec.Y += DrawInfo.TextHeight + _spacing;
                     }
                 }
 
@@ -177,11 +178,16 @@ namespace MonoGame.Tools.Pipeline
                 c.Draw(g, rec, _separatorPos, selected);
 
                 // Draw separator for the current row
-                g.FillRectangle(PropInfo.BorderColor, _separatorPos - 1, rec.Y, 1, rec.Height);
+                g.FillRectangle(DrawInfo.BorderColor, _separatorPos - 1, rec.Y, 1, rec.Height);
 
-                rec.Y += PropInfo.TextHeight + _spacing;
+                rec.Y += c.Height + _spacing;
             }
-            drawable.Height = rec.Y + 1;
+
+            if (_height != rec.Y + 1)
+            {
+                drawable.Height = _height = rec.Y + 1;
+                SetWidth();
+            }
 
             if (overGroup) // TODO: Group collapsing/expanding?
                 SetCursor(CursorType.Default);
@@ -189,22 +195,11 @@ namespace MonoGame.Tools.Pipeline
                 SetCursor(CursorType.VerticalSplit);
             else
                 SetCursor(CursorType.Default);
-
-            // On windows craeting a dialog from double click will freeze
-            // the GUI thread until a click occurs so we need to call the
-            // dialog at the end of Paint event so everything gets drawn.
-            if(_edit)
-            {
-                _edit = false;
-
-                if (!Global.Unix)
-                    _selectedCell.Edit(pixel1);
-            }
         }
 
         private void Drawable_MouseDown(object sender, MouseEventArgs e)
         {
-            ClearChildren();
+            _skipEdit = ClearChildren();
             if (_currentCursor == CursorType.VerticalSplit)
                 _moveSeparator = (int)e.Location.X - _separatorPos;
         }
@@ -212,6 +207,18 @@ namespace MonoGame.Tools.Pipeline
         private void Drawable_MouseUp(object sender, MouseEventArgs e)
         {
             _moveSeparator = - _separatorWidth / 2 - 1;
+
+            if (e.Location.X >= _separatorPos && _selectedCell != null && _selectedCell.Editable && !_skipEdit)
+            {
+                var action = new Action(() => _selectedCell.Edit(pixel1));
+
+#if WINDOWS
+                (drawable.ControlObject as System.Windows.Controls.Canvas).Dispatcher.BeginInvoke(action, 
+                    System.Windows.Threading.DispatcherPriority.ContextIdle, null);
+#else
+                action.Invoke();
+#endif
+            }
         }
 
         private void Drawable_MouseMove(object sender, MouseEventArgs e)
@@ -229,32 +236,41 @@ namespace MonoGame.Tools.Pipeline
             _mouseLocation = new Point(-1, -1);
             drawable.Invalidate();
 
-            Drawable_MouseUp(sender, e);
-        }
-
-        private void Drawable_MouseDoubleClick(object sender, MouseEventArgs e)
-        {
-            if (e.Location.X >= _separatorPos && _selectedCell != null && _selectedCell.Editable)
-            {
-                if (Global.Unix)
-                    _selectedCell.Edit(pixel1);
-                else
-                    _edit = true;
-            }
+            _moveSeparator = -_separatorWidth / 2 - 1;
         }
 
         private void PropertyGridTable_SizeChanged(object sender, EventArgs e)
         {
-#if WINDOWS
-            var scrollsize = 0;
+            SetWidth();
 
-            if((ControlObject as System.Windows.Forms.ScrollableControl).VerticalScroll.Visible)
-                scrollsize = System.Windows.Forms.SystemInformation.VerticalScrollBarWidth;
+#if LINUX
+            // force size realocation
+            drawable.Width = pixel1.Width - 2;
 
-            drawable.Width = Width - scrollsize - System.Windows.Forms.SystemInformation.VerticalResizeBorderThickness;
+            foreach (var child in pixel1.Children)
+                if (child != drawable)
+                    child.Width = drawable.Width - _separatorPos;
 #endif
 
             drawable.Invalidate();
+        }
+
+        private void SetWidth()
+        {
+#if WINDOWS
+            var action = new Action(() =>
+            {
+                var scrollsize = (_height >= Height) ? System.Windows.SystemParameters.VerticalScrollBarWidth : 0.0;
+                drawable.Width = (int)(Width - scrollsize - System.Windows.SystemParameters.BorderWidth * 2);
+
+                foreach (var child in pixel1.Children)
+                    if (child != drawable)
+                        child.Width = drawable.Width - _separatorPos;
+            });
+
+            (drawable.ControlObject as System.Windows.Controls.Canvas).Dispatcher.BeginInvoke(action,
+                System.Windows.Threading.DispatcherPriority.ContextIdle, null);
+#endif
         }
     }
 }

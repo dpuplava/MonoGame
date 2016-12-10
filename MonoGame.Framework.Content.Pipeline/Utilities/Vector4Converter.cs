@@ -18,29 +18,30 @@ namespace Microsoft.Xna.Framework.Content.Pipeline.Utilities
         IVector4Converter<short>,
         IVector4Converter<int>,
         IVector4Converter<float>,
-        IVector4Converter<Color>
+        IVector4Converter<Color>,
+        IVector4Converter<Vector4>
     {
         Vector4 IVector4Converter<byte>.ToVector4(byte value)
         {
             var f = (float)value / (float)byte.MaxValue;
-            return new Vector4(f, f, f, f);
+            return new Vector4(1f, 1f, 1f, f);
         }
 
         Vector4 IVector4Converter<short>.ToVector4(short value)
         {
             var f = (float)value / (float)short.MaxValue;
-            return new Vector4(f, f, f, f);
+            return new Vector4(1f, 1f, 1f, f);
         }
 
         Vector4 IVector4Converter<int>.ToVector4(int value)
         {
             var f = (float)value / (float)int.MaxValue;
-            return new Vector4(f, f, f, f);
+            return new Vector4(1f, 1f, 1f, f);
         }
 
         Vector4 IVector4Converter<float>.ToVector4(float value)
         {
-            return new Vector4(value, value, value, value);
+            return new Vector4(1f, 1f, 1f, value);
         }
 
         Vector4 IVector4Converter<Color>.ToVector4(Color value)
@@ -48,29 +49,39 @@ namespace Microsoft.Xna.Framework.Content.Pipeline.Utilities
             return value.ToVector4();
         }
 
+        Vector4 IVector4Converter<Vector4>.ToVector4(Vector4 value)
+        {
+            return value;
+        }
+
         byte IVector4Converter<byte>.FromVector4(Vector4 value)
         {
-            return (byte)(value.X * (float)byte.MaxValue);
+            return (byte)(value.W * (float)byte.MaxValue);
         }
 
         short IVector4Converter<short>.FromVector4(Vector4 value)
         {
-            return (short)(value.X * (float)short.MaxValue);
+            return (short)(value.W * (float)short.MaxValue);
         }
 
         int IVector4Converter<int>.FromVector4(Vector4 value)
         {
-            return (int)(value.X * (float)int.MaxValue);
+            return (int)(value.W * (float)int.MaxValue);
         }
 
         float IVector4Converter<float>.FromVector4(Vector4 value)
         {
-            return value.X;
+            return value.W;
         }
 
         Color IVector4Converter<Color>.FromVector4(Vector4 value)
         {
             return new Color(value);
+        }
+
+        Vector4 IVector4Converter<Vector4>.FromVector4(Vector4 value)
+        {
+            return value;
         }
     }
 }
