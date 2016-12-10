@@ -3,14 +3,11 @@
 // file 'LICENSE.txt', which is part of this source code package.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using Microsoft.Xna.Framework;
 using System.Windows.Forms;
 using Microsoft.Xna.Framework.Input;
-using XnaKeys = Microsoft.Xna.Framework.Input.Keys;
-
 
 namespace MonoGame.Framework
 {
@@ -19,16 +16,11 @@ namespace MonoGame.Framework
         //internal static string LaunchParameters;
 
         private WinFormsGameWindow _window;
-        private readonly List<XnaKeys> _keyState;
 
         public WinFormsGamePlatform(Game game)
             : base(game)
         {
-            _keyState = new List<XnaKeys>();
-            Keyboard.SetKeys(_keyState);
-
             _window = new WinFormsGameWindow(this);
-            _window.KeyState = _keyState;
 
             Mouse.Window = _window._form;
 
@@ -100,9 +92,9 @@ namespace MonoGame.Framework
 
             if (Game.graphicsDeviceManager.HardwareModeSwitch)
             {
-                 Game.GraphicsDevice.PresentationParameters.IsFullScreen = true;
-                 Game.GraphicsDevice.CreateSizeDependentResources(true);
-                 Game.GraphicsDevice.ApplyRenderTargets(null);
+                Game.GraphicsDevice.PresentationParameters.IsFullScreen = true;
+                Game.GraphicsDevice.SetHardwareFullscreen();
+
                 _window._form.WindowState = FormWindowState.Maximized;
             }
             else
@@ -122,10 +114,16 @@ namespace MonoGame.Framework
 
             if (Game.graphicsDeviceManager.HardwareModeSwitch)
             {
-                _window._form.WindowState = FormWindowState.Normal;
+
                 Game.GraphicsDevice.PresentationParameters.IsFullScreen = false;
-                Game.GraphicsDevice.CreateSizeDependentResources(true);
-                Game.GraphicsDevice.ApplyRenderTargets(null);
+                Game.GraphicsDevice.SetHardwareFullscreen();
+
+                _window._form.WindowState = FormWindowState.Normal;
+
+                Game.GraphicsDevice.PresentationParameters.BackBufferWidth = Game.graphicsDeviceManager.PreferredBackBufferWidth;
+                Game.GraphicsDevice.PresentationParameters.BackBufferHeight = Game.graphicsDeviceManager.PreferredBackBufferHeight;
+
+                Game.GraphicsDevice.OnPresentationChanged();
             }
             else
             {
@@ -181,7 +179,6 @@ namespace MonoGame.Framework
                 }
                 Microsoft.Xna.Framework.Media.MediaManagerState.CheckShutdown();
             }
-            Keyboard.SetKeys(null);
 
             base.Dispose(disposing);
         }
