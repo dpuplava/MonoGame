@@ -67,6 +67,10 @@ namespace Microsoft.Xna.Framework.Graphics
         {
         }
 
+        private void PlatformApplyBlend()
+        {
+        }
+
         internal void PlatformApplyState(bool applyShaders)
         {
         }

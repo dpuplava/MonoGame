@@ -11,9 +11,6 @@ using System.Linq;
 using SharpDX;
 using SharpDX.Direct3D;
 using SharpDX.Direct3D11;
-#if WINDOWS_PHONE
-using MonoGame.Framework.WindowsPhone;
-#endif
 
 #if WINDOWS_STOREAPP || WINDOWS_UAP
 using Windows.UI.Xaml.Controls;
@@ -1182,6 +1179,35 @@ namespace Microsoft.Xna.Framework.Graphics
             Debug.Assert(_d3dContext != null, "The d3d context is null!");
         }
 
+        private void PlatformApplyBlend()
+        {
+            if (_blendFactorDirty || _blendStateDirty)
+            {
+                var state = _actualBlendState.GetDxState(this);
+                var factor = GetBlendFactor();
+                _d3dContext.OutputMerger.SetBlendState(state, factor);
+
+                _blendFactorDirty = false;
+                _blendStateDirty = false;
+            }
+        }
+
+#if WINDOWS_UAP
+        private SharpDX.Mathematics.Interop.RawColor4 GetBlendFactor()
+        {
+			return new SharpDX.Mathematics.Interop.RawColor4(
+					BlendFactor.R / 255.0f,
+					BlendFactor.G / 255.0f,
+					BlendFactor.B / 255.0f,
+					BlendFactor.A / 255.0f);
+        }
+#else
+        private Color4 GetBlendFactor()
+        {
+			return BlendFactor.ToColor4();
+        }
+#endif
+
         internal void PlatformApplyState(bool applyShaders)
         {
             // NOTE: This code assumes _d3dContext has been locked by the caller.
@@ -1318,8 +1344,7 @@ namespace Microsoft.Xna.Framework.Graphics
         {
             DynamicIndexBuffer buffer;
 
-            var indexType = typeof(T);
-            var indexSize = Marshal.SizeOf(indexType);
+            var indexSize = Utilities.ReflectionHelpers.SizeOf<T>.Get();
             var indexElementSize = indexSize == 2 ? IndexElementSize.SixteenBits : IndexElementSize.ThirtyTwoBits;
 
             var requiredIndexCount = Math.Max(indexCount, 6000);
